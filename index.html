@@ -430,6 +430,7 @@ let activeTeam = 0;
 let currentHole = 0;
 let holeSeconds = 0;
 let chronoInterval = null;
+let holeStart = null; // timestamp (ms) du début du trou ; le chrono se base sur l'horloge, pas sur setInterval
 let nbTeams = 2;
 
 // Edit state
@@ -463,6 +464,7 @@ async function init() {
   buildTeamSetup();
   renderHistory();
   applyTeacherMode();
+  restoreState();
 }
 
 // ======== SUPABASE REALTIME (polling fallback — works without websocket config) ========
@@ -721,6 +723,7 @@ function setNbTeams(n) {
     btn.style.borderColor = k===n ? 'var(--green-light)' : 'var(--border)';
   });
   renderTeamCards();
+  saveDraft();
 }
 
 function renderTeamCards() {
@@ -797,24 +800,87 @@ function startSession() {
   renderScoreGrid();
   renderScorecard();
   startChrono();
+  localStorage.removeItem('golf_setup_draft');
 }
 
 // ======== CHRONO ========
-function startChrono() {
+function startChrono(resumeStart) {
   clearInterval(chronoInterval);
-  holeSeconds=0;
+  holeStart = resumeStart || Date.now();
   document.getElementById('time-alert').classList.remove('show');
+  tickChrono();
+  chronoInterval = setInterval(tickChrono, 1000);
+  saveState();
+}
+function tickChrono() {
+  if (!session || holeStart===null) return;
+  holeSeconds = Math.max(0, Math.floor((Date.now()-holeStart)/1000));
+  session.teams.forEach(t=>{ t.holeTimes[currentHole]=holeSeconds; });
   updateChronoDisplay();
-  chronoInterval = setInterval(()=>{
-    holeSeconds++;
-    session.teams.forEach(t=>{ t.holeTimes[currentHole]=holeSeconds; });
-    updateChronoDisplay();
-    if (holeSeconds===600) document.getElementById('time-alert').classList.add('show');
-  }, 1000);
+  if (holeSeconds>=600) document.getElementById('time-alert').classList.add('show');
 }
 function stopChrono() {
+  if (holeStart!==null) tickChrono();
   clearInterval(chronoInterval);
-  if (session) session.teams.forEach(t=>{ t.holeTimes[currentHole]=holeSeconds; });
+  holeStart = null;
+  saveState();
+}
+// Le navigateur gèle les timers quand le téléphone est verrouillé : on resynchronise au retour
+document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) tickChrono(); });
+window.addEventListener('pageshow', tickChrono);
+
+document.getElementById('teams-setup').addEventListener('input', ()=>saveDraft());
+document.getElementById('teams-setup').addEventListener('change', ()=>saveDraft());
+document.getElementById('sel-class').addEventListener('change', ()=>saveDraft());
+
+// ======== PERSISTANCE (survit à l'actualisation / au verrouillage) ========
+const STATE_KEY = 'golf_play_state';
+function saveState() {
+  try {
+    if (!session) { localStorage.removeItem(STATE_KEY); return; }
+    localStorage.setItem(STATE_KEY, JSON.stringify({session, activeTeam, currentHole, holeStart, holeSeconds}));
+  } catch(e) {}
+}
+function saveDraft() {
+  if (session) return;
+  try {
+    const teams = [];
+    for (let i=0; i<nbTeams; i++) {
+      const r = document.querySelector(`input[name="nb${i}"]:checked`);
+      teams.push({nb: r?r.value:'1', p1: document.getElementById(`t${i}p1`)?.value||'', p2: document.getElementById(`t${i}p2`)?.value||''});
+    }
+    localStorage.setItem('golf_setup_draft', JSON.stringify({cls: document.getElementById('sel-class').value, nbTeams, teams}));
+  } catch(e) {}
+}
+function applyDraft(d) {
+  d.teams.forEach((t,i)=>{
+    if (i>=nbTeams) return;
+    const r = document.querySelector(`input[name="nb${i}"][value="${t.nb}"]`);
+    if (r) { r.checked = true; document.getElementById(`t${i}p2w`).style.display = t.nb==='2' ? 'block' : 'none'; }
+    document.getElementById(`t${i}p1`).value = t.p1;
+    document.getElementById(`t${i}p2`).value = t.p2;
+  });
+}
+function restoreState() {
+  try {
+    const st = JSON.parse(localStorage.getItem(STATE_KEY)||'null');
+    if (st && st.session) {
+      session = st.session; activeTeam = st.activeTeam; currentHole = st.currentHole;
+      holeSeconds = st.holeSeconds||0;
+      document.getElementById('setup-panel').style.display='none';
+      document.getElementById('play-panel').style.display='block';
+      document.getElementById('display-class').textContent = session.className;
+      updateHoleDisplay(); renderTeamTabs(); renderScoreGrid(); renderScorecard();
+      if (st.holeStart) startChrono(st.holeStart); else updateChronoDisplay();
+      return;
+    }
+    const d = JSON.parse(localStorage.getItem('golf_setup_draft')||'null');
+    if (d) {
+      nbTeams = d.nbTeams||nbTeams;
+      buildTeamSetup(); applyDraft(d);
+      if (d.cls) document.getElementById('sel-class').value = d.cls;
+    }
+  } catch(e) { console.error(e); }
 }
 function updateChronoDisplay() {
   const m = Math.floor(holeSeconds/60).toString().padStart(2,'0');
@@ -862,7 +928,7 @@ function hexToRgb(hex) {
 }
 
 function switchTeam(idx) {
-  activeTeam=idx; renderTeamTabs(); renderScoreGrid(); renderScorecard();
+  activeTeam=idx; renderTeamTabs(); renderScoreGrid(); renderScorecard(); saveState();
 }
 
 // ======== SCORE GRID ========
@@ -883,6 +949,7 @@ function renderScoreGrid() {
 function selectScore(btn) {
   session.teams[activeTeam].scores[currentHole]=btn.dataset.val;
   renderScoreGrid(); renderScorecard(); renderTeamTabs();
+  saveState();
 }
 
 // ======== SCORECARD ========
@@ -949,6 +1016,7 @@ function applyEdit() {
   session.teams[editTeamIdx].scores[editHoleIdx]=editVal;
   closeModal('modal-edit');
   renderScorecard(); renderTeamTabs(); renderScoreGrid();
+  saveState();
 }
 
 // ======== FINISH ========
@@ -1017,6 +1085,7 @@ async function saveSession() {
 // ======== RESET ========
 function resetPlay() {
   clearInterval(chronoInterval);
+  holeStart=null;
   session=null; activeTeam=0; currentHole=0; holeSeconds=0;
   document.getElementById('setup-panel').style.display='block';
   document.getElementById('play-panel').style.display='none';
@@ -1027,6 +1096,8 @@ function resetPlay() {
   document.getElementById('btn-finish').disabled=true;
   document.getElementById('sel-class').value='';
   buildTeamSetup();
+  saveState();
+  localStorage.removeItem('golf_setup_draft');
 }
 
 // ======== MODALS ========

@@ -14,6 +14,6 @@ jobs:
       - name: Requête vers Supabase
         run: |
           curl --fail --silent --show-error --retry 3 \
-            "https://krtbnwrwyzxxinybtggk.supabase.co/rest/v1/golf_classes?select=id&limit=1" \
-            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtydGJud3J3eXp4eGlueWJ0Z2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0OTk5NjksImV4cCI6MjA5MTA3NTk2OX0.L-DU1CZYC4FsfbbFgY67SJJCNZbTEIlv5hz50whWtGg" \
-            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtydGJud3J3eXp4eGlueWJ0Z2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0OTk5NjksImV4cCI6MjA5MTA3NTk2OX0.L-DU1CZYC4FsfbbFgY67SJJCNZbTEIlv5hz50whWtGg"
+            "https://pmybexihswczolsnrzep.supabase.co/rest/v1/golf_classes?select=id&limit=1" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBteWJleGloc3djem9sc25yemVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MDgwNjcsImV4cCI6MjA5OTE4NDA2N30.6klI6-Qtg_yDjnnbR_XDSeQX_vmDH5VJ0jdP4JruOsI" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBteWJleGloc3djem9sc25yemVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MDgwNjcsImV4cCI6MjA5OTE4NDA2N30.6klI6-Qtg_yDjnnbR_XDSeQX_vmDH5VJ0jdP4JruOsI"

@@ -1160,7 +1160,7 @@ function renderHistory() {
 let pendingDelete = null;
 function openDeleteModal(id) {
   if (!teacherUnlocked) { requireTeacher('history'); return; }
-  pendingDelete = historyData.find(r => r.id === id);
+  pendingDelete = historyData.find(r => String(r.id) === String(id));
   if (!pendingDelete) return;
   document.getElementById('delete-modal-desc').textContent =
     `${pendingDelete.team} — ${pendingDelete.date} à ${pendingDelete.time}`;

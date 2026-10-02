@@ -460,7 +460,9 @@ async function init() {
     setSyncStatus('err', 'Hors ligne — données locales');
     console.error(e);
     // Fallback to localStorage if offline
-    classes = JSON.parse(localStorage.getItem('golf_classes') || '["2nde A","2nde B","1ère A","Terminale"]');
+    // anciennes versions : liste de noms (texte) ; on normalise en {id, name}
+    classes = JSON.parse(localStorage.getItem('golf_classes') || '["2nde A","2nde B","1ère A","Terminale"]')
+      .map(c => typeof c === 'string' ? {id:null, name:c} : c);
     historyData = JSON.parse(localStorage.getItem('golf_history') || '[]');
   }
   renderClassSelect();
@@ -495,7 +497,7 @@ function subscribeRealtime() {
 async function loadClasses() {
   const data = await sbFetch('golf_classes?select=id,name&order=name');
   classes = data.map(r => ({id: r.id, name: r.name}));
-  localStorage.setItem('golf_classes', JSON.stringify(classes.map(c=>c.name)));
+  localStorage.setItem('golf_classes', JSON.stringify(classes));
 }
 
 async function loadHistory() {
@@ -658,11 +660,12 @@ async function addClass() {
     await loadClasses();
     renderClassTags(); renderClassSelect(); renderFilterClass();
     setSyncStatus('ok','Synchronisé');
-  } catch(e) { setSyncStatus('err','Erreur'); alert('Erreur : ' + e.message); }
+  } catch(e) { setSyncStatus('err','Erreur'); alert('Impossible d\'ajouter la classe (base de données injoignable ?) : ' + e.message); }
 }
 
 async function removeClass(id, name) {
   if (!teacherUnlocked) { requireTeacher('settings'); return; }
+  if (!id || id==='null') { alert('Impossible de supprimer : l\'application est hors ligne (base de données injoignable). Vérifiez la connexion et rechargez la page.'); return; }
   if (!confirm(`Supprimer la classe "${name}" ?`)) return;
   setSyncStatus('loading', 'Suppression…');
   try {

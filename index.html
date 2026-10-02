@@ -334,7 +334,7 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
     <div id="modal-finish-body"></div>
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button class="btn btn-primary" style="flex:1;" id="btn-save-session" onclick="saveSession()">💾 Enregistrer tout</button>
-      <button class="btn btn-outline" style="flex:1;" onclick="closeModal('modal-finish')">Annuler</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="cancelFinish()">Annuler</button>
     </div>
   </div>
 </div>
@@ -362,6 +362,8 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
     </div>
   </div>
 </div>
+
+<div id="toast" style="display:none;position:fixed;left:16px;right:16px;bottom:24px;z-index:9999;color:#fff;padding:14px 16px;border-radius:10px;font-weight:600;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.4);"></div>
 
 <!-- MODAL DELETE -->
 <div class="modal-overlay" id="modal-delete">
@@ -783,6 +785,8 @@ function setupAutofill(inputId, sugId) {
 }
 function setName(i,s,n) { document.getElementById(i).value=n; document.getElementById(s).style.display='none'; }
 
+const MIN_HOLES_TO_FINISH = 7;
+
 // ======== TROU DE DÉPART ========
 // Les trous sont joués dans l'ordre à partir du trou de départ (ex. départ 5 : 5,6,7,8,9,1,2,3,4).
 // Les scores de la session sont indexés par ordre de jeu ; holeNum() donne le numéro réel du trou.
@@ -934,9 +938,10 @@ function renderTeamTabs() {
     document.getElementById('btn-next').style.display='none';
     document.getElementById('btn-finish').disabled=!allDone;
   } else {
+    // on peut terminer le parcours dès le 7e trou joué
     document.getElementById('btn-next').style.display='';
     document.getElementById('btn-next').disabled=!allDone;
-    document.getElementById('btn-finish').disabled=true;
+    document.getElementById('btn-finish').disabled=!(allDone && currentHole>=MIN_HOLES_TO_FINISH-1);
   }
 }
 
@@ -1041,6 +1046,19 @@ function applyEdit() {
 }
 
 // ======== FINISH ========
+function cancelFinish() {
+  closeModal('modal-finish');
+  // le chrono avait été arrêté à l'ouverture du récapitulatif : on le reprend
+  if (session && holeStart===null) startChrono(Date.now() - holeSeconds*1000);
+}
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#c0392b' : '#2d6a4f';
+  t.style.display = 'block';
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>{ t.style.display='none'; }, 4000);
+}
 function openFinishModal() {
   stopChrono();
   let html='';
@@ -1100,6 +1118,7 @@ async function saveSession() {
     closeModal('modal-finish');
     resetPlay();
     switchTab('tab-history');
+    showToast(`✅ Partie enregistrée (${rows.length} équipe${rows.length>1?'s':''})`);
   } catch(e) {
     setSyncStatus('err','Erreur d\'enregistrement');
     alert('Erreur lors de l\'enregistrement : ' + e.message);

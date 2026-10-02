@@ -196,6 +196,8 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
       <div class="card-title">🏌️ Nouvelle partie</div>
       <label>Classe</label>
       <select id="sel-class"><option value="">— Choisir une classe —</option></select>
+      <label style="margin-top:10px;">Trou de départ</label>
+      <select id="sel-start"><option value="1">Trou 1</option><option value="2">Trou 2</option><option value="3">Trou 3</option><option value="4">Trou 4</option><option value="5">Trou 5</option><option value="6">Trou 6</option><option value="7">Trou 7</option><option value="8">Trou 8</option><option value="9">Trou 9</option></select>
       <div id="teams-setup"></div>
       <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="startSession()">🚀 Démarrer le parcours</button>
     </div>
@@ -244,6 +246,9 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
     <div style="display:flex;gap:8px;margin-bottom:24px;">
       <button class="btn btn-primary" style="flex:1;" id="btn-next" onclick="nextHole()">Trou suivant →</button>
       <button class="btn btn-danger" style="flex:1;" id="btn-finish" onclick="openFinishModal()" disabled>🏁 Terminer</button>
+    </div>
+    <div style="margin:-10px 0 24px;">
+      <button class="btn btn-outline" style="width:100%;" id="btn-cancel" onclick="cancelSession()">✖ Annuler la partie (démarrée par erreur)</button>
     </div>
   </div>
 </div>
@@ -775,6 +780,16 @@ function setupAutofill(inputId, sugId) {
 }
 function setName(i,s,n) { document.getElementById(i).value=n; document.getElementById(s).style.display='none'; }
 
+// ======== TROU DE DÉPART ========
+// Les trous sont joués dans l'ordre à partir du trou de départ (ex. départ 5 : 5,6,7,8,9,1,2,3,4).
+// Les scores de la session sont indexés par ordre de jeu ; holeNum() donne le numéro réel du trou.
+function holeNum(i) { return ((((session&&session.startHole)||1)-1+i)%9)+1; }
+function cancelSession() {
+  if (!session || currentHole!==0) return;
+  if (!confirm('Annuler la partie en cours ? Tout ce qui a été saisi sera perdu.')) return;
+  resetPlay();
+}
+
 // ======== START SESSION ========
 function startSession() {
   const cls = document.getElementById('sel-class').value;
@@ -788,7 +803,7 @@ function startSession() {
     if (nb===2 && !p2) { alert(`Entrez le joueur 2 de l'équipe ${i+1}.`); return; }
     teams.push({name: nb===2?`${p1} & ${p2}`:p1, nbPlayers:nb, scores:new Array(9).fill(null), holeTimes:new Array(9).fill(0)});
   }
-  session = {className:cls, teams};
+  session = {className:cls, startHole:parseInt(document.getElementById('sel-start').value)||1, teams};
   activeTeam=0; currentHole=0; holeSeconds=0;
   document.getElementById('setup-panel').style.display='none';
   document.getElementById('play-panel').style.display='block';
@@ -832,6 +847,7 @@ window.addEventListener('pageshow', tickChrono);
 document.getElementById('teams-setup').addEventListener('input', ()=>saveDraft());
 document.getElementById('teams-setup').addEventListener('change', ()=>saveDraft());
 document.getElementById('sel-class').addEventListener('change', ()=>saveDraft());
+document.getElementById('sel-start').addEventListener('change', ()=>saveDraft());
 
 // ======== PERSISTANCE (survit à l'actualisation / au verrouillage) ========
 const STATE_KEY = 'golf_play_state';
@@ -849,7 +865,7 @@ function saveDraft() {
       const r = document.querySelector(`input[name="nb${i}"]:checked`);
       teams.push({nb: r?r.value:'1', p1: document.getElementById(`t${i}p1`)?.value||'', p2: document.getElementById(`t${i}p2`)?.value||''});
     }
-    localStorage.setItem('golf_setup_draft', JSON.stringify({cls: document.getElementById('sel-class').value, nbTeams, teams}));
+    localStorage.setItem('golf_setup_draft', JSON.stringify({cls: document.getElementById('sel-class').value, start: document.getElementById('sel-start').value, nbTeams, teams}));
   } catch(e) {}
 }
 function applyDraft(d) {
@@ -879,6 +895,7 @@ function restoreState() {
       nbTeams = d.nbTeams||nbTeams;
       buildTeamSetup(); applyDraft(d);
       if (d.cls) document.getElementById('sel-class').value = d.cls;
+      if (d.start) document.getElementById('sel-start').value = d.start;
     }
   } catch(e) { console.error(e); }
 }
@@ -908,6 +925,7 @@ function renderTeamTabs() {
       style="border-color:${bc};color:${col};background:${bg};" title="${t.name}">${shortName}${done?' ✓':''}</button>`;
   }).join('');
 
+  document.getElementById('btn-cancel').style.display = currentHole===0 ? '' : 'none';
   const allDone = session.teams.every(t=>t.scores[currentHole]!==null);
   if (currentHole===8) {
     document.getElementById('btn-next').style.display='none';
@@ -972,7 +990,7 @@ function renderScorecard() {
     const timeHtml=isCurrent
       ?'<span style="color:var(--green-light);font-size:10px;font-family:\'Space Mono\',monospace;">en cours</span>'
       :`<span style="font-family:'Space Mono',monospace;font-size:10px;">${formatTime(t.holeTimes[i])}</span>`;
-    tr.innerHTML=`<td>${i+1}</td><td>${scoreHtml}</td><td>${timeHtml}</td>`;
+    tr.innerHTML=`<td>${holeNum(i)}</td><td>${scoreHtml}</td><td>${timeHtml}</td>`;
     if (isPast||(isCurrent&&score!==null)) {
       tr.classList.add('editable-row'); tr.title='Cliquer pour modifier';
       tr.onclick=()=>openEditModal(activeTeam,i);
@@ -993,14 +1011,14 @@ function nextHole() {
   }
 }
 function updateHoleDisplay() {
-  document.getElementById('hole-display').textContent=`TROU ${currentHole+1}`;
+  document.getElementById('hole-display').textContent=`TROU ${holeNum(currentHole)}`;
 }
 
 // ======== EDIT MODAL ========
 function openEditModal(tIdx, hIdx) {
   editTeamIdx=tIdx; editHoleIdx=hIdx;
   editVal=session.teams[tIdx].scores[hIdx];
-  document.getElementById('edit-modal-title').textContent=`✏️ Trou ${hIdx+1} — ${session.teams[tIdx].name}`;
+  document.getElementById('edit-modal-title').textContent=`✏️ Trou ${holeNum(hIdx)} — ${session.teams[tIdx].name}`;
   document.getElementById('edit-modal-sub').textContent=`Score actuel : ${editVal||'—'}`;
   document.querySelectorAll('.edit-score-btn').forEach(btn=>{
     btn.classList.toggle('esel', btn.dataset.v===String(editVal));
@@ -1038,7 +1056,7 @@ function openFinishModal() {
       </div>
       <div style="overflow-x:auto;margin-top:6px;">
         <table class="hist-table" style="font-size:10px;">
-          <tr><th>Trou</th>${t.scores.map((_,j)=>`<th>${j+1}</th>`).join('')}</tr>
+          <tr><th>Trou</th>${t.scores.map((_,j)=>`<th>${holeNum(j)}</th>`).join('')}</tr>
           <tr><td>Score</td>${t.scores.map(s=>{
             if(s==='G')return'<td class="sc-G">G</td>';
             if(s==='HG')return'<td class="sc-HG">HG</td>';
@@ -1052,6 +1070,11 @@ function openFinishModal() {
   openModal('modal-finish');
 }
 
+function byHole(arr) {
+  const out = new Array(9);
+  arr.forEach((v,i)=>{ out[holeNum(i)-1]=v; });
+  return out;
+}
 async function saveSession() {
   const btn = document.getElementById('btn-save-session');
   btn.disabled=true; btn.textContent='⏳ Enregistrement…';
@@ -1063,7 +1086,7 @@ async function saveSession() {
     const rows = session.teams.map(t=>({
       date: dateKey, time: timeStr,
       team: t.name, class_name: session.className, nb_players: t.nbPlayers,
-      scores: t.scores, times: t.holeTimes,
+      scores: byHole(t.scores), times: byHole(t.holeTimes),
       total_score: t.scores.reduce((a,s)=>s==='G'||s==='HG'?a:a+(parseInt(s)||0),0),
       total_time: t.holeTimes.reduce((a,b)=>a+b,0),
       saved_at: now.toISOString()
@@ -1095,6 +1118,7 @@ function resetPlay() {
   document.getElementById('btn-next').style.display='';
   document.getElementById('btn-finish').disabled=true;
   document.getElementById('sel-class').value='';
+  document.getElementById('sel-start').value='1';
   buildTeamSetup();
   saveState();
   localStorage.removeItem('golf_setup_draft');

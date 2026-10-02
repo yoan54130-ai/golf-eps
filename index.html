@@ -210,6 +210,7 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
         <span id="display-class" class="badge badge-green"></span>
       </div>
       <div id="chrono-display">00:00</div>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px;display:none;" id="btn-start" onclick="startFirstHole()">▶ Lancer le départ</button>
       <div id="time-alert">⚠️ Temps dépassé (10 min) ! Passez au trou suivant.</div>
     </div>
 
@@ -791,6 +792,12 @@ const MIN_HOLES_TO_FINISH = 7;
 // Les trous sont joués dans l'ordre à partir du trou de départ (ex. départ 5 : 5,6,7,8,9,1,2,3,4).
 // Les scores de la session sont indexés par ordre de jeu ; holeNum() donne le numéro réel du trou.
 function holeNum(i) { return ((((session&&session.startHole)||1)-1+i)%9)+1; }
+function startFirstHole() {
+  if (!session || session.started) return;
+  session.started = true;
+  startChrono();
+  renderTeamTabs();
+}
 function cancelSession() {
   if (!session || currentHole!==0) return;
   if (!confirm('Annuler la partie en cours ? Tout ce qui a été saisi sera perdu.')) return;
@@ -810,7 +817,7 @@ function startSession() {
     if (nb===2 && !p2) { alert(`Entrez le joueur 2 de l'équipe ${i+1}.`); return; }
     teams.push({name: nb===2?`${p1} & ${p2}`:p1, nbPlayers:nb, scores:new Array(9).fill(null), holeTimes:new Array(9).fill(0)});
   }
-  session = {className:cls, startHole:parseInt(document.getElementById('sel-start').value)||1, teams};
+  session = {className:cls, startHole:parseInt(document.getElementById('sel-start').value)||1, started:false, teams};
   activeTeam=0; currentHole=0; holeSeconds=0;
   document.getElementById('setup-panel').style.display='none';
   document.getElementById('play-panel').style.display='block';
@@ -821,7 +828,11 @@ function startSession() {
   renderTeamTabs();
   renderScoreGrid();
   renderScorecard();
-  startChrono();
+  holeStart=null; holeSeconds=0;
+  document.getElementById('chrono-display').textContent='00:00';
+  document.getElementById('chrono-display').className='';
+  document.getElementById('time-alert').classList.remove('show');
+  saveState(); // le chrono du 1er trou démarre avec le bouton « Lancer le départ »
   localStorage.removeItem('golf_setup_draft');
 }
 
@@ -933,6 +944,11 @@ function renderTeamTabs() {
   }).join('');
 
   document.getElementById('btn-cancel').style.display = currentHole===0 ? '' : 'none';
+  const waiting = session.started === false;
+  document.getElementById('btn-start').style.display = waiting ? '' : 'none';
+  const lock = waiting ? 'none' : '';
+  document.querySelector('.score-grid').style.pointerEvents = lock;
+  document.querySelector('.score-grid').style.opacity = waiting ? '.4' : '';
   const allDone = session.teams.every(t=>t.scores[currentHole]!==null);
   if (currentHole===8) {
     document.getElementById('btn-next').style.display='none';
@@ -973,6 +989,7 @@ function renderScoreGrid() {
 }
 
 function selectScore(btn) {
+  if (session.started === false) return;
   session.teams[activeTeam].scores[currentHole]=btn.dataset.val;
   renderScoreGrid(); renderScorecard(); renderTeamTabs();
   saveState();

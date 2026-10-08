@@ -201,7 +201,7 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
       <div class="card-title">🏌️ Nouvelle partie</div>
       <label>Classe</label>
       <select id="sel-class"><option value="">— Choisir une classe —</option></select>
-      <label style="margin-top:10px;">Trou de départ</label>
+      <label style="margin-top:10px;">Trou de départ <span style="font-weight:400;color:var(--text-dim);">(le parcours se joue jusqu'au trou 9)</span></label>
       <select id="sel-start"><option value="1">Trou 1</option><option value="2">Trou 2</option><option value="3">Trou 3</option><option value="4">Trou 4</option><option value="5">Trou 5</option><option value="6">Trou 6</option><option value="7">Trou 7</option><option value="8">Trou 8</option><option value="9">Trou 9</option></select>
       <div id="teams-setup"></div>
       <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="startSession()">🚀 Démarrer le parcours</button>
@@ -889,9 +889,13 @@ function setName(i,s,n) { document.getElementById(i).value=n; document.getElemen
 const MIN_HOLES_TO_FINISH = 7;
 
 // ======== TROU DE DÉPART ========
-// Les trous sont joués dans l'ordre à partir du trou de départ (ex. départ 5 : 5,6,7,8,9,1,2,3,4).
+// Les trous sont joués dans l'ordre à partir du trou de départ (ex. départ 5 : 5,6,7,8,9).
 // Les scores de la session sont indexés par ordre de jeu ; holeNum() donne le numéro réel du trou.
-function holeNum(i) { return ((((session&&session.startHole)||1)-1+i)%9)+1; }
+// Le parcours va du trou de départ jusqu'au trou 9 (pas de retour au trou 1) :
+// une équipe qui part du trou 3 joue les trous 3 à 9.
+function holeNum(i) { return (((session&&session.startHole)||1)+i); }
+function lastHoleIdx() { return 9-(((session&&session.startHole)||1)); }
+function nbHoles() { return lastHoleIdx()+1; }
 function startFirstHole() {
   if (!session || session.started) return;
   session.started = true;
@@ -1051,14 +1055,14 @@ function renderTeamTabs() {
   document.querySelector('.score-grid').style.pointerEvents = lock;
   document.querySelector('.score-grid').style.opacity = waiting ? '.4' : '';
   const allDone = session.teams.every(t=>t.scores[currentHole]!==null);
-  if (currentHole===8) {
+  if (currentHole===lastHoleIdx()) {
     document.getElementById('btn-next').style.display='none';
     document.getElementById('btn-finish').disabled=!allDone;
   } else {
-    // on peut terminer le parcours dès le 7e trou joué
+    // on peut terminer dès le 7e trou joué, ou dès le trou n°8
     document.getElementById('btn-next').style.display='';
     document.getElementById('btn-next').disabled=!allDone;
-    document.getElementById('btn-finish').disabled=!(allDone && currentHole>=MIN_HOLES_TO_FINISH-1);
+    document.getElementById('btn-finish').disabled=!(allDone && (currentHole>=MIN_HOLES_TO_FINISH-1 || holeNum(currentHole)>=8));
   }
 }
 
@@ -1104,7 +1108,7 @@ function renderScorecard() {
   document.getElementById('sc-th-team').textContent=t.name;
   const tbody = document.getElementById('sc-body');
   tbody.innerHTML='';
-  for (let i=0; i<9; i++) {
+  for (let i=0; i<nbHoles(); i++) {
     const tr = document.createElement('tr');
     const isCurrent=i===currentHole, isPast=i<currentHole;
     if (isCurrent) tr.classList.add('cur-hole');
@@ -1131,7 +1135,7 @@ function renderScorecard() {
 function nextHole() {
   const missing=session.teams.filter(t=>t.scores[currentHole]===null).map(t=>t.name.split(' & ')[0]);
   if (missing.length) { alert(`Score manquant pour : ${missing.join(', ')}`); return; }
-  if (currentHole<8) {
+  if (currentHole<lastHoleIdx()) {
     currentHole++;
     updateHoleDisplay();
     renderTeamTabs(); renderScoreGrid(); renderScorecard();
@@ -1199,8 +1203,8 @@ function openFinishModal() {
       </div>
       <div style="overflow-x:auto;margin-top:6px;">
         <table class="hist-table" style="font-size:10px;">
-          <tr><th>Trou</th>${t.scores.map((_,j)=>`<th>${holeNum(j)}</th>`).join('')}</tr>
-          <tr><td>Score</td>${t.scores.map(s=>{
+          <tr><th>Trou</th>${t.scores.slice(0,nbHoles()).map((_,j)=>`<th>${holeNum(j)}</th>`).join('')}</tr>
+          <tr><td>Score</td>${t.scores.slice(0,nbHoles()).map(s=>{
             if(s==='G')return'<td class="sc-G">G</td>';
             if(s==='HG')return'<td class="sc-HG">HG</td>';
             if(s==='X')return'<td class="sc-X">X</td>';
@@ -1216,7 +1220,7 @@ function openFinishModal() {
 
 function byHole(arr) {
   const out = new Array(9);
-  arr.forEach((v,i)=>{ out[holeNum(i)-1]=v; });
+  arr.slice(0,nbHoles()).forEach((v,i)=>{ out[holeNum(i)-1]=v; });
   return out;
 }
 async function saveSession() {

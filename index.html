@@ -92,6 +92,11 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
 .scorecard .cur-hole td{background:rgba(82,183,136,.12);}
 .sc-G{color:var(--accent);font-family:'Space Mono',monospace;font-weight:700;}
 .sc-HG{color:var(--accent2);font-family:'Space Mono',monospace;font-weight:700;}
+.sc-X{color:var(--red);font-family:'Space Mono',monospace;font-weight:700;}
+.score-btn.X-btn{font-size:13px;background:rgba(230,57,70,.1);border-color:rgba(230,57,70,.35);color:var(--red);}
+.score-btn.X-btn.selected{background:var(--red);color:white;border-color:var(--red);}
+.edit-score-btn.eX{color:var(--red);border-color:rgba(230,57,70,.35);}
+.edit-score-btn.eX.esel{background:var(--red);color:white;border-color:var(--red);}
 .sc-num{font-family:'Space Mono',monospace;font-weight:700;}
 .editable-row{cursor:pointer;}
 .editable-row:hover td{background:rgba(82,183,136,.08)!important;}
@@ -229,6 +234,7 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
         <button class="score-btn" data-val="8" onclick="selectScore(this)">8</button>
         <button class="score-btn G-btn" data-val="G" onclick="selectScore(this)">G<br><small style="font-size:10px;">Green</small></button>
         <button class="score-btn HG-btn" data-val="HG" onclick="selectScore(this)" style="grid-column:span 2;">HG<br><small style="font-size:10px;">Hors Green</small></button>
+        <button class="score-btn X-btn" data-val="X" onclick="selectScore(this)">X<br><small style="font-size:10px;">Balle perdue</small></button>
       </div>
       <div id="score-hint" style="font-size:11px;color:var(--text-dim);text-align:center;margin-top:2px;"></div>
     </div>
@@ -258,18 +264,24 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
 <div id="tab-history" class="tab-content">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
     <div style="font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:2px;">📋 Historique</div>
-    <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn btn-outline btn-sm" id="btn-export" onclick="exportCSV()" style="display:none;">⬇ CSV</button>
   </div>
   <div class="teacher-bar" id="hist-teacher-bar">
     <div>
       <div class="teacher-status"><span id="hist-lock-icon">🔒</span> <span id="hist-teacher-label">Mode enseignant</span></div>
-      <div class="teacher-locked-msg" id="hist-teacher-sub">Connectez-vous pour supprimer des résultats.</div>
+      <div class="teacher-locked-msg" id="hist-teacher-sub">L'historique est réservé à l'enseignant.</div>
     </div>
     <button class="btn btn-sm btn-outline" id="hist-teacher-btn" onclick="requireTeacher('history')">Se connecter</button>
   </div>
-  <label>Filtrer par classe</label>
-  <select id="filter-class" onchange="renderHistory()" style="margin-bottom:12px;"><option value="">Toutes les classes</option></select>
-  <div id="history-container"><div style="text-align:center;color:var(--text-dim);padding:40px 0;">Chargement…</div></div>
+  <div id="history-main" style="display:none;">
+    <input id="filter-search" type="search" placeholder="🔍 Rechercher un élève ou une équipe" oninput="renderHistory()" style="margin-bottom:8px;" autocomplete="off">
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <select id="filter-class" onchange="renderHistory()" style="margin-bottom:0;flex:1;"><option value="">Toutes les classes</option></select>
+      <select id="filter-date" onchange="renderHistory()" style="margin-bottom:0;flex:1;"><option value="">Toutes les dates</option></select>
+    </div>
+    <div id="history-count" style="font-size:12px;color:var(--text-dim);margin-bottom:8px;"></div>
+    <div id="history-container"><div style="text-align:center;color:var(--text-dim);padding:40px 0;">Chargement…</div></div>
+  </div>
 </div>
 
 <!-- ===== TAB SETTINGS ===== -->
@@ -305,7 +317,7 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
 
   <div class="card">
     <div class="card-title">🔑 Mot de passe enseignant</div>
-    <p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">Mot de passe par défaut : <strong style="color:var(--green-light);font-family:'Space Mono',monospace;">golf</strong></p>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">Le mot de passe est celui du compte enseignant : il est enregistré sur le serveur et identique sur tous vos appareils.</p>
     <div id="change-pwd-locked" style="font-size:12px;color:var(--text-dim);">🔒 Mode enseignant requis pour changer le mot de passe.</div>
     <div id="change-pwd-form" style="display:none;">
       <div class="pwd-input-wrap">
@@ -323,7 +335,7 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
 
   <div class="card">
     <div class="card-title">ℹ️ À propos</div>
-    <p style="font-size:12px;color:var(--text-dim);">Golf EPS · 9 trous · 1 à 4 équipes · Chrono commun · Max 8 coups → G / HG · Alerte 10 min/trou · Synchronisation en temps réel.</p>
+    <p style="font-size:12px;color:var(--text-dim);">Golf EPS · 9 trous · 1 à 4 équipes · Chrono commun · Max 8 coups → G / HG · X = balle perdue · Alerte 10 min/trou · Synchronisation en temps réel.</p>
   </div>
 </div>
 
@@ -356,6 +368,7 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
       <button class="edit-score-btn" data-v="8" onclick="editSelectScore(this)">8</button>
       <button class="edit-score-btn eG" data-v="G" onclick="editSelectScore(this)">G</button>
       <button class="edit-score-btn eHG" data-v="HG" onclick="editSelectScore(this)" style="grid-column:span 2;">HG</button>
+      <button class="edit-score-btn eX" data-v="X" onclick="editSelectScore(this)">X</button>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;">
       <button class="btn btn-primary" style="flex:1;" onclick="applyEdit()">✅ Valider</button>
@@ -383,14 +396,15 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
 <div class="modal-overlay" id="modal-teacher-login">
   <div class="modal">
     <h2>🔑 Mode enseignant</h2>
-    <p style="color:var(--text-dim);font-size:13px;margin-bottom:14px;">Entrez le mot de passe pour accéder aux fonctions enseignant.</p>
+    <p style="color:var(--text-dim);font-size:13px;margin-bottom:14px;">Connectez-vous avec le compte enseignant pour accéder à l'historique et aux réglages.</p>
+    <input type="email" id="teacher-email-input" placeholder="Adresse e-mail" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('teacher-pwd-input').focus()">
     <div class="pwd-input-wrap">
-      <input type="password" id="teacher-pwd-input" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')checkTeacherPwd()">
+      <input type="password" id="teacher-pwd-input" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkTeacherPwd()">
       <button class="pwd-toggle" onclick="togglePwd('teacher-pwd-input',this)">👁</button>
     </div>
-    <div class="pwd-error" id="teacher-pwd-error">❌ Mot de passe incorrect.</div>
+    <div class="pwd-error" id="teacher-pwd-error">❌ Identifiants incorrects.</div>
     <div style="display:flex;gap:8px;margin-top:4px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="checkTeacherPwd()">🔓 Connexion</button>
+      <button class="btn btn-primary" style="flex:1;" id="btn-teacher-login" onclick="checkTeacherPwd()">🔓 Connexion</button>
       <button class="btn btn-outline" style="flex:1;" onclick="closeModal('modal-teacher-login')">Annuler</button>
     </div>
   </div>
@@ -401,25 +415,67 @@ label{font-size:12px;color:var(--text-dim);margin-bottom:3px;display:block;font-
 const SUPABASE_URL = 'https://pmybexihswczolsnrzep.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBteWJleGloc3djem9sc25yemVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MDgwNjcsImV4cCI6MjA5OTE4NDA2N30.6klI6-Qtg_yDjnnbR_XDSeQX_vmDH5VJ0jdP4JruOsI';
 
+// ======== AUTHENTIFICATION ENSEIGNANT (Supabase Auth) ========
+// Seul le compte enseignant peut lire / supprimer l'historique : cela est imposé côté serveur
+// (règles RLS), pas seulement dans cette page. La session est gardée dans l'onglet (sessionStorage).
+const AUTH_KEY = 'golf_auth';
+function getAuth() { try { return JSON.parse(sessionStorage.getItem(AUTH_KEY)||'null'); } catch(e) { return null; } }
+function setAuth(a) { try { if (a) sessionStorage.setItem(AUTH_KEY, JSON.stringify(a)); else sessionStorage.removeItem(AUTH_KEY); } catch(e) {} }
+async function authRequest(path, body, method='POST', token) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+    method,
+    headers: {'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', ...(token ? {'Authorization': 'Bearer '+token} : {})},
+    body: JSON.stringify(body)
+  });
+  const text = await res.text();
+  let json = {}; try { json = text ? JSON.parse(text) : {}; } catch(e) {}
+  if (!res.ok) throw new Error(json.error_description || json.msg || json.message || text || ('Erreur '+res.status));
+  return json;
+}
+function storeSession(j) {
+  setAuth({access_token:j.access_token, refresh_token:j.refresh_token,
+           expires_at: Date.now() + (j.expires_in||3600)*1000 - 30000,
+           email: (j.user && j.user.email) || (getAuth()||{}).email});
+}
+async function getAccessToken() {
+  const a = getAuth();
+  if (!a) return null;
+  if (Date.now() < a.expires_at) return a.access_token;
+  try {
+    storeSession(await authRequest('token?grant_type=refresh_token', {refresh_token: a.refresh_token}));
+    return getAuth().access_token;
+  } catch(e) {
+    setAuth(null); teacherUnlocked = false;
+    return null;
+  }
+}
+
 async function sbFetch(path, options={}) {
-  const isDelete = options.method === 'DELETE';
+  const {headers:extra, ...rest} = options;
+  const isDelete = rest.method === 'DELETE';
+  const token = await getAccessToken();
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...rest,
     headers: {
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Authorization': `Bearer ${token || SUPABASE_KEY}`,
       'Content-Type': 'application/json',
       'Prefer': isDelete ? 'return=minimal' : 'return=representation',
-      ...options.headers
-    },
-    ...options
+      ...extra
+    }
   });
   if (!res.ok) {
+    if (res.status === 401 && token) { setAuth(null); teacherUnlocked = false; applyTeacherMode(); throw new Error('Session enseignant expirée : reconnectez-vous.'); }
     const err = await res.text();
     throw new Error(err);
   }
   if (res.status === 204 || isDelete) return [];
   const text = await res.text();
   return text ? JSON.parse(text) : [];
+}
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function setSyncStatus(state, msg) {
@@ -453,6 +509,9 @@ const TEAM_COLORS = ['#f4a261','#52b788','#74c69d','#ffd166'];
 // ======== INIT ========
 async function init() {
   setSyncStatus('loading', 'Connexion…');
+  // nettoyage des anciennes données locales (mot de passe local, copie de l'historique)
+  try { localStorage.removeItem('golf_teacher_pwd'); localStorage.removeItem('golf_history'); } catch(e) {}
+  teacherUnlocked = !!(await getAccessToken());
   try {
     await loadClasses();
     await loadHistory();
@@ -466,7 +525,7 @@ async function init() {
     // anciennes versions : liste de noms (texte) ; on normalise en {id, name}
     classes = JSON.parse(localStorage.getItem('golf_classes') || '["2nde A","2nde B","1ère A","Terminale"]')
       .map(c => typeof c === 'string' ? {id:null, name:c} : c);
-    historyData = JSON.parse(localStorage.getItem('golf_history') || '[]');
+    historyData = [];
   }
   renderClassSelect();
   renderFilterClass();
@@ -504,6 +563,7 @@ async function loadClasses() {
 }
 
 async function loadHistory() {
+  if (!teacherUnlocked) { historyData = []; return; } // l'historique n'est lisible que par l'enseignant
   const data = await sbFetch('golf_history?select=*&order=saved_at.desc');
   historyData = data.map(r => ({
     id: r.id,
@@ -518,7 +578,6 @@ async function loadHistory() {
     totalTime: r.total_time,
     savedAt: r.saved_at
   }));
-  localStorage.setItem('golf_history', JSON.stringify(historyData));
 }
 
 // ======== TABS ========
@@ -534,29 +593,48 @@ function switchTab(id) {
 }
 
 // ======== TEACHER MODE ========
-function getTeacherPwd() { return localStorage.getItem('golf_teacher_pwd') || 'golf'; }
-
 function requireTeacher(target) {
   if (teacherUnlocked) { applyTeacherMode(); return; }
   teacherLoginTarget = target;
+  const emailInp = document.getElementById('teacher-email-input');
+  try { emailInp.value = localStorage.getItem('golf_teacher_email') || ''; } catch(e) {}
   document.getElementById('teacher-pwd-input').value='';
   document.getElementById('teacher-pwd-error').classList.remove('show');
   openModal('modal-teacher-login');
-  setTimeout(()=>document.getElementById('teacher-pwd-input').focus(), 100);
+  setTimeout(()=>(emailInp.value ? document.getElementById('teacher-pwd-input') : emailInp).focus(), 100);
 }
-function checkTeacherPwd() {
-  const val = document.getElementById('teacher-pwd-input').value;
-  if (val === getTeacherPwd()) {
+async function checkTeacherPwd() {
+  const email = document.getElementById('teacher-email-input').value.trim();
+  const pwd = document.getElementById('teacher-pwd-input').value;
+  const err = document.getElementById('teacher-pwd-error');
+  const btn = document.getElementById('btn-teacher-login');
+  if (!email || !pwd) { err.textContent='❌ Entrez l\'e-mail et le mot de passe.'; err.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = '⏳ Connexion…';
+  try {
+    storeSession(await authRequest('token?grant_type=password', {email, password: pwd}));
+    try { localStorage.setItem('golf_teacher_email', email); } catch(e) {}
     teacherUnlocked = true;
     closeModal('modal-teacher-login');
+    document.getElementById('teacher-pwd-input').value='';
+    try { await loadHistory(); } catch(e) { console.error(e); }
     applyTeacherMode();
-  } else {
-    document.getElementById('teacher-pwd-error').classList.add('show');
+  } catch(e) {
+    err.textContent = '❌ ' + (/invalid|credentials/i.test(e.message) ? 'Identifiants incorrects.' : e.message);
+    err.classList.add('show');
     document.getElementById('teacher-pwd-input').value='';
     document.getElementById('teacher-pwd-input').focus();
+  } finally {
+    btn.disabled = false; btn.textContent = '🔓 Connexion';
   }
 }
-function lockTeacher() { teacherUnlocked = false; applyTeacherMode(); }
+async function lockTeacher() {
+  const a = getAuth();
+  if (a) { try { await authRequest('logout', {}, 'POST', a.access_token); } catch(e) {} }
+  setAuth(null);
+  teacherUnlocked = false;
+  historyData = [];
+  applyTeacherMode();
+}
 
 function applyTeacherMode() {
   // History bar
@@ -565,13 +643,13 @@ function applyTeacherMode() {
   if (teacherUnlocked) {
     hbar.classList.add('active-mode');
     document.getElementById('hist-teacher-label').textContent = '✅ Mode enseignant activé';
-    document.getElementById('hist-teacher-sub').textContent = 'Vous pouvez supprimer des résultats.';
+    document.getElementById('hist-teacher-sub').textContent = 'Vous avez accès à tous les résultats.';
     hbtn.textContent = 'Se déconnecter';
     hbtn.onclick = lockTeacher;
   } else {
     hbar.classList.remove('active-mode');
     document.getElementById('hist-teacher-label').textContent = 'Mode enseignant';
-    document.getElementById('hist-teacher-sub').textContent = 'Connectez-vous pour supprimer des résultats.';
+    document.getElementById('hist-teacher-sub').textContent = 'L\'historique est réservé à l\'enseignant.';
     hbtn.textContent = 'Se connecter';
     hbtn.onclick = () => requireTeacher('history');
   }
@@ -598,6 +676,8 @@ function applyTeacherMode() {
   document.getElementById('del-all-locked').style.display    = teacherUnlocked ? 'none'  : 'block';
   document.getElementById('change-pwd-form').style.display   = teacherUnlocked ? 'block' : 'none';
   document.getElementById('change-pwd-locked').style.display = teacherUnlocked ? 'none'  : 'block';
+  document.getElementById('history-main').style.display = teacherUnlocked ? 'block' : 'none';
+  document.getElementById('btn-export').style.display = teacherUnlocked ? '' : 'none';
   renderHistory();
   renderClassTags();
 }
@@ -607,17 +687,21 @@ function togglePwd(inputId, btn) {
   if (inp.type==='password') { inp.type='text'; btn.textContent='🙈'; }
   else { inp.type='password'; btn.textContent='👁'; }
 }
-function changePassword() {
+async function changePassword() {
   const p1 = document.getElementById('new-pwd1').value;
   const p2 = document.getElementById('new-pwd2').value;
   const err = document.getElementById('pwd-change-error');
-  if (!p1) { err.textContent='Le mot de passe ne peut pas être vide.'; err.classList.add('show'); return; }
+  if (p1.length < 6) { err.textContent='Le mot de passe doit contenir au moins 6 caractères.'; err.classList.add('show'); return; }
   if (p1 !== p2) { err.textContent='Les mots de passe ne correspondent pas.'; err.classList.add('show'); return; }
-  localStorage.setItem('golf_teacher_pwd', p1);
+  try {
+    const token = await getAccessToken();
+    if (!token) throw new Error('Session expirée : reconnectez-vous.');
+    await authRequest('user', {password: p1}, 'PUT', token);
+  } catch(e) { err.textContent = 'Erreur : ' + e.message; err.classList.add('show'); return; }
   err.classList.remove('show');
   document.getElementById('new-pwd1').value='';
   document.getElementById('new-pwd2').value='';
-  alert('✅ Mot de passe modifié avec succès.');
+  alert('✅ Mot de passe modifié avec succès (valable sur tous vos appareils).');
 }
 
 // ======== CLASSES ========
@@ -628,8 +712,8 @@ function renderClassTags() {
     return;
   }
   wrap.innerHTML = classes.map(c =>
-    `<span class="class-tag">${c.name}${teacherUnlocked
-      ? `<button class="del-class-btn" data-id="${c.id}" data-name="${c.name.replace(/"/g,'&quot;')}" title="Supprimer">×</button>`
+    `<span class="class-tag">${esc(c.name)}${teacherUnlocked
+      ? `<button class="del-class-btn" data-id="${c.id}" data-name="${esc(c.name)}" title="Supprimer">×</button>`
       : ''}</span>`
   ).join('');
 
@@ -643,13 +727,16 @@ function renderClassSelect() {
   const sel = document.getElementById('sel-class');
   const cur = sel.value;
   sel.innerHTML = '<option value="">— Choisir une classe —</option>' +
-    classes.map(c => `<option value="${c.name}"${c.name===cur?' selected':''}>${c.name}</option>`).join('');
+    classes.map(c => `<option value="${esc(c.name)}"${c.name===cur?' selected':''}>${esc(c.name)}</option>`).join('');
+}
+function setSelectOptions(sel, firstLabel, values) {
+  const cur = sel.value;
+  const html = `<option value="">${firstLabel}</option>` +
+    values.map(v => `<option value="${esc(v)}"${v===cur?' selected':''}>${esc(v)}</option>`).join('');
+  if (sel._html !== html) { sel.innerHTML = html; sel._html = html; sel.value = values.includes(cur) ? cur : ''; }
 }
 function renderFilterClass() {
-  const sel = document.getElementById('filter-class');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Toutes les classes</option>' +
-    classes.map(c => `<option value="${c.name}"${c.name===cur?' selected':''}>${c.name}</option>`).join('');
+  setSelectOptions(document.getElementById('filter-class'), 'Toutes les classes', classes.map(c=>c.name));
 }
 
 async function addClass() {
@@ -776,13 +863,26 @@ function setupAutofill(inputId, sugId) {
   inp.addEventListener('input', ()=>{
     const val = inp.value.trim().toLowerCase();
     if (!val) { sug.style.display='none'; return; }
-    const names = [...new Set(historyData.flatMap(s=>s.team.split(' & ')))];
+    const names = getKnownNames();
     const m = names.filter(n=>n.toLowerCase().includes(val));
     if (!m.length) { sug.style.display='none'; return; }
-    sug.innerHTML = m.map(n=>`<div class="autofill-item" onclick="setName('${inputId}','${sugId}',${JSON.stringify(n)})">${n}</div>`).join('');
+    sug.innerHTML = m.map(n=>`<div class="autofill-item" data-n="${esc(n)}">${esc(n)}</div>`).join('');
+    sug.querySelectorAll('.autofill-item').forEach(el=>el.addEventListener('click', ()=>setName(inputId, sugId, el.dataset.n)));
     sug.style.display = 'block';
   });
   document.addEventListener('click', e=>{ if (!e.target.closest('.input-wrap')) sug.style.display='none'; });
+}
+function getKnownNames() {
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem('golf_names')||'[]'); } catch(e) {}
+  return [...new Set([...local, ...historyData.flatMap(s=>(s.team||'').split(' & '))])];
+}
+function rememberNames(teams) {
+  try {
+    const cur = JSON.parse(localStorage.getItem('golf_names')||'[]');
+    const all = [...new Set([...teams.flatMap(t=>t.name.split(' & ')), ...cur])].slice(0,300);
+    localStorage.setItem('golf_names', JSON.stringify(all));
+  } catch(e) {}
 }
 function setName(i,s,n) { document.getElementById(i).value=n; document.getElementById(s).style.display='none'; }
 
@@ -817,6 +917,7 @@ function startSession() {
     if (nb===2 && !p2) { alert(`Entrez le joueur 2 de l'équipe ${i+1}.`); return; }
     teams.push({name: nb===2?`${p1} & ${p2}`:p1, nbPlayers:nb, scores:new Array(9).fill(null), holeTimes:new Array(9).fill(0)});
   }
+  rememberNames(teams);
   session = {className:cls, startHole:parseInt(document.getElementById('sel-start').value)||1, started:false, teams};
   activeTeam=0; currentHole=0; holeSeconds=0;
   document.getElementById('setup-panel').style.display='none';
@@ -940,7 +1041,7 @@ function renderTeamTabs() {
     const col = isActive ? TEAM_COLORS[i] : done ? 'var(--green-light)' : 'var(--text-dim)';
     const bg = isActive ? `rgba(${hexToRgb(TEAM_COLORS[i])},.15)` : 'var(--card2)';
     return `<button class="team-tab${isActive?' active':''}" onclick="switchTeam(${i})"
-      style="border-color:${bc};color:${col};background:${bg};" title="${t.name}">${shortName}${done?' ✓':''}</button>`;
+      style="border-color:${bc};color:${col};background:${bg};" title="${esc(t.name)}">${esc(shortName)}${done?' ✓':''}</button>`;
   }).join('');
 
   document.getElementById('btn-cancel').style.display = currentHole===0 ? '' : 'none';
@@ -984,6 +1085,7 @@ function renderScoreGrid() {
   const hint = document.getElementById('score-hint');
   if (cur==='G') hint.textContent='✅ Balle sur le green après 8+ coups';
   else if (cur==='HG') hint.textContent='⚠️ Balle hors du green après 8+ coups';
+  else if (cur==='X') hint.textContent='❌ Balle perdue';
   else if (cur) hint.textContent=`${cur} coup${cur>1?'s':''} sur ce trou`;
   else hint.textContent='';
 }
@@ -1010,6 +1112,7 @@ function renderScorecard() {
     let scoreHtml='—';
     if (score==='G') scoreHtml='<span class="sc-G">G</span>';
     else if (score==='HG') scoreHtml='<span class="sc-HG">HG</span>';
+    else if (score==='X') scoreHtml='<span class="sc-X">X</span>';
     else if (score!==null) scoreHtml=`<span class="sc-num">${score}</span>`;
     else if (isCurrent) scoreHtml='<span style="color:var(--accent)">▶</span>';
     const timeHtml=isCurrent
@@ -1080,17 +1183,19 @@ function openFinishModal() {
   stopChrono();
   let html='';
   session.teams.forEach((t,i)=>{
-    const totalNum=t.scores.reduce((a,s)=>s==='G'||s==='HG'?a:a+(parseInt(s)||0),0);
+    const totalNum=t.scores.reduce((a,s)=>['G','HG','X'].includes(s)?a:a+(parseInt(s)||0),0);
     const gC=t.scores.filter(s=>s==='G').length;
     const hgC=t.scores.filter(s=>s==='HG').length;
+    const xC=t.scores.filter(s=>s==='X').length;
     const totalTime=t.holeTimes.reduce((a,b)=>a+b,0);
     html+=`<div style="background:var(--card2);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${TEAM_COLORS[i]};">
-      <div style="font-weight:600;font-size:14px;color:${TEAM_COLORS[i]};margin-bottom:4px;">${t.name}</div>
+      <div style="font-weight:600;font-size:14px;color:${TEAM_COLORS[i]};margin-bottom:4px;">${esc(t.name)}</div>
       <div class="chips">
         <div class="chip">Total : <strong>${totalNum}</strong></div>
         <div class="chip">Temps : <strong>${formatTime(totalTime)}</strong></div>
         ${gC?`<div class="chip" style="color:var(--accent)">G×${gC}</div>`:''}
         ${hgC?`<div class="chip" style="color:var(--accent2)">HG×${hgC}</div>`:''}
+        ${xC?`<div class="chip" style="color:var(--red)">X×${xC}</div>`:''}
       </div>
       <div style="overflow-x:auto;margin-top:6px;">
         <table class="hist-table" style="font-size:10px;">
@@ -1098,6 +1203,7 @@ function openFinishModal() {
           <tr><td>Score</td>${t.scores.map(s=>{
             if(s==='G')return'<td class="sc-G">G</td>';
             if(s==='HG')return'<td class="sc-HG">HG</td>';
+            if(s==='X')return'<td class="sc-X">X</td>';
             return`<td style="font-family:'Space Mono',monospace;">${s||'—'}</td>`;
           }).join('')}</tr>
         </table>
@@ -1125,16 +1231,16 @@ async function saveSession() {
       date: dateKey, time: timeStr,
       team: t.name, class_name: session.className, nb_players: t.nbPlayers,
       scores: byHole(t.scores), times: byHole(t.holeTimes),
-      total_score: t.scores.reduce((a,s)=>s==='G'||s==='HG'?a:a+(parseInt(s)||0),0),
+      total_score: t.scores.reduce((a,s)=>['G','HG','X'].includes(s)?a:a+(parseInt(s)||0),0),
       total_time: t.holeTimes.reduce((a,b)=>a+b,0),
       saved_at: now.toISOString()
     }));
-    await sbFetch('golf_history', { method:'POST', body: JSON.stringify(rows) });
-    await loadHistory();
+    await sbFetch('golf_history', { method:'POST', body: JSON.stringify(rows), headers:{'Prefer':'return=minimal'} });
+    if (teacherUnlocked) await loadHistory();
     setSyncStatus('ok','Synchronisé');
     closeModal('modal-finish');
     resetPlay();
-    switchTab('tab-history');
+    if (teacherUnlocked) switchTab('tab-history');
     showToast(`✅ Partie enregistrée (${rows.length} équipe${rows.length>1?'s':''})`);
   } catch(e) {
     setSyncStatus('err','Erreur d\'enregistrement');
@@ -1169,49 +1275,56 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 
 // ======== HISTORY ========
 function renderHistory() {
-  const filterCls=document.getElementById('filter-class').value;
   const container=document.getElementById('history-container');
+  if (!teacherUnlocked) { container.innerHTML=''; return; }
+  const dateKey = d => (d||'').split('/').reverse().join('-');
+  const allDates=[...new Set(historyData.map(r=>r.date))].sort((a,b)=>dateKey(b).localeCompare(dateKey(a)));
+  setSelectOptions(document.getElementById('filter-date'), 'Toutes les dates', allDates);
+  const filterCls=document.getElementById('filter-class').value;
+  const filterDate=document.getElementById('filter-date').value;
+  const q=document.getElementById('filter-search').value.trim().toLowerCase();
   let data=[...historyData];
   if (filterCls) data=data.filter(r=>r.className===filterCls);
+  if (filterDate) data=data.filter(r=>r.date===filterDate);
+  if (q) data=data.filter(r=>(r.team||'').toLowerCase().includes(q));
+  document.getElementById('history-count').textContent = `${data.length} résultat${data.length>1?'s':''}` + (data.length!==historyData.length ? ` sur ${historyData.length}` : '');
   if (!data.length) {
-    container.innerHTML=`<div style="text-align:center;color:var(--text-dim);padding:40px 0;">Aucun résultat${filterCls?' pour cette classe':''}.</div>`;
+    container.innerHTML=`<div style="text-align:center;color:var(--text-dim);padding:40px 0;">Aucun résultat${(filterCls||filterDate||q)?' pour ces filtres':''}.</div>`;
     return;
   }
   const byDate={};
   data.forEach(r=>{if(!byDate[r.date])byDate[r.date]=[];byDate[r.date].push(r);});
-  const dates=Object.keys(byDate).sort((a,b)=>{
-    return b.split('/').reverse().join('-').localeCompare(a.split('/').reverse().join('-'));
-  });
+  const dates=Object.keys(byDate).sort((a,b)=>dateKey(b).localeCompare(dateKey(a)));
   let html='';
   dates.forEach(date=>{
     const rows=byDate[date];
-    html+=`<div class="date-header">📅 ${date}</div>`;
+    html+=`<div class="date-header">📅 ${esc(date)}</div>`;
     html+=`<div style="overflow-x:auto;margin-bottom:8px;"><table class="hist-table"><thead><tr>
       <th>Heure</th><th>Équipe</th><th>Classe</th>
       ${[1,2,3,4,5,6,7,8,9].map(n=>`<th>T${n}</th>`).join('')}
-      <th>Total</th><th>Tps total</th>${teacherUnlocked?'<th></th>':''}
+      <th>Total</th><th>Tps total</th><th></th>
     </tr></thead><tbody>`;
     rows.forEach(r=>{
-      const sc=r.scores.map(s=>{
+      const sc=(r.scores||[]).map(s=>{
         if(s==='G')return'<td class="sc-G">G</td>';
         if(s==='HG')return'<td class="sc-HG">HG</td>';
-        return`<td style="font-family:'Space Mono',monospace;">${s||'—'}</td>`;
+        if(s==='X')return'<td class="sc-X">X</td>';
+        return`<td style="font-family:'Space Mono',monospace;">${esc(s)||'—'}</td>`;
       }).join('');
       html+=`<tr>
-        <td style="font-size:10px;">${r.time||''}</td>
-        <td style="font-weight:600;text-align:left;white-space:nowrap;font-size:11px;">${r.team}</td>
-        <td style="font-size:10px;">${r.className}</td>
+        <td style="font-size:10px;">${esc(r.time)}</td>
+        <td style="font-weight:600;text-align:left;white-space:nowrap;font-size:11px;">${esc(r.team)}</td>
+        <td style="font-size:10px;">${esc(r.className)}</td>
         ${sc}
-        <td style="font-family:'Space Mono',monospace;font-weight:700;">${r.totalScore||'—'}</td>
+        <td style="font-family:'Space Mono',monospace;font-weight:700;">${esc(r.totalScore)||'—'}</td>
         <td style="font-family:'Space Mono',monospace;font-size:10px;">${formatTime(r.totalTime)}</td>
-        ${teacherUnlocked?`<td><button class="btn btn-danger btn-xs" onclick="openDeleteModal('${r.id}')" title="Supprimer">✕</button></td>`:''}
+        <td><button class="btn btn-danger btn-xs" onclick="openDeleteModal('${esc(r.id)}')" title="Supprimer">✕</button></td>
       </tr>`;
-      const tc=r.times.map(t=>`<td style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-dim);">${formatTime(t)}</td>`).join('');
-      const extraCols = teacherUnlocked ? 3 : 2;
+      const tc=(r.times||[]).map(t=>`<td style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-dim);">${formatTime(t)}</td>`).join('');
       html+=`<tr style="background:rgba(0,0,0,.15);">
         <td colspan="3" style="font-size:9px;color:var(--text-dim);text-align:left;padding:3px 4px;">⏱ temps/trou</td>
         ${tc}
-        <td colspan="${extraCols}" style="font-size:9px;color:var(--text-dim);">${r.nbPlayers||1} joueur(s)</td>
+        <td colspan="3" style="font-size:9px;color:var(--text-dim);">${esc(r.nbPlayers||1)} joueur(s)</td>
       </tr>`;
     });
     html+=`</tbody></table></div>`;
@@ -1245,11 +1358,12 @@ async function confirmDelete() {
 
 // ======== EXPORT CSV ========
 function exportCSV() {
+  if (!teacherUnlocked) { requireTeacher('history'); return; }
   if (!historyData.length) { alert('Aucun résultat à exporter.'); return; }
   const hd=['Date','Heure','Équipe','Classe','Joueurs','T1','T2','T3','T4','T5','T6','T7','T8','T9',
     'Total coups','Temps T1','Temps T2','Temps T3','Temps T4','Temps T5','Temps T6','Temps T7','Temps T8','Temps T9','Temps total'];
   const rows=historyData.map(r=>[
-    r.date,r.time,`"${r.team}"`,r.className,r.nbPlayers||1,
+    r.date,r.time,`"${String(r.team).replace(/"/g,'""')}"`,r.className,r.nbPlayers||1,
     ...r.scores.map(s=>s||''),r.totalScore,
     ...r.times.map(t=>formatTime(t)),formatTime(r.totalTime)
   ]);
